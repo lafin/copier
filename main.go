@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -61,7 +60,8 @@ func main() {
 		return
 	}
 
-	request, err := newfileUploadRequest("https://pp.userapi.com/c639631/v639631968/14282/yS0K3aa6zEM.jpg", server.Response.UploadURL)
+	uploadURL := server.Response.UploadURL
+	request, err := newfileUploadRequest("https://pp.userapi.com/c639631/v639631968/14282/yS0K3aa6zEM.jpg", uploadURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -77,19 +77,17 @@ func main() {
 		}
 		defer resp.Body.Close()
 
-		fmt.Println(string(body))
 		var fileUploadRequest api.ResponseFileUploadRequest
 		if err := json.Unmarshal(body, &fileUploadRequest); err != nil {
 			log.Fatal(err)
 			return
 		}
 
-		fmt.Println(fileUploadRequest.Photo, fileUploadRequest.Hash)
-		result, err := api.SavePhoto(fileUploadRequest.Server, fileUploadRequest.Photo, fileUploadRequest.Hash)
+		result, err := api.SavePhoto(117456732, fileUploadRequest.Server, fileUploadRequest.Photo, fileUploadRequest.Hash)
 		if err != nil {
 			log.Fatalf("[main:api.SavePhoto] error: %s", err)
 			return
 		}
-		fmt.Println(result)
+		log.Println(result)
 	}
 }
