@@ -1,15 +1,15 @@
-package main
+package copier
 
 import (
 	"bytes"
 	"encoding/json"
 	"io"
 	"io/ioutil"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	api "github.com/lafin/vk"
 )
@@ -42,52 +42,55 @@ func newfileUploadRequest(from, to string) (*http.Request, error) {
 	return req, err
 }
 
-func main() {
+// UploadFiles - upload files
+func UploadFiles(files []string, groupID int) ([]string, error) {
 	clientID := os.Getenv("CLIENT_ID")
 	email := os.Getenv("CLIENT_EMAIL")
 	password := os.Getenv("CLIENT_PASSWORD")
 
-	log.Println("start")
 	_, err := api.GetAccessToken(clientID, email, password)
 	if err != nil {
-		log.Fatalf("[main:api.GetAccessToken] error: %s", err)
-		return
+		return nil, err
 	}
 
-	server, err := api.GetUploadServer(117456732)
+	server, err := api.GetUploadServer(groupID)
 	if err != nil {
-		log.Fatalf("[main:api.GetUploadServer] error: %s", err)
-		return
+		return nil, err
 	}
 
+	var results []string
 	uploadURL := server.Response.UploadURL
-	request, err := newfileUploadRequest("https://pp.userapi.com/c639631/v639631968/14282/yS0K3aa6zEM.jpg", uploadURL)
-	if err != nil {
-		log.Fatal(err)
-	}
-	client := &http.Client{}
-	resp, err := client.Do(request)
-	if err != nil {
-		log.Fatal(err)
-	} else {
+	for _, file := range files {
+		request, err := newfileUploadRequest(file, uploadURL)
+		if err != nil {
+			return nil, err
+		}
+		client := &http.Client{}
+		resp, err := client.Do(request)
+		if err != nil {
+			return nil, err
+		}
+
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatal(err)
-			return
+			return nil, err
 		}
 		defer resp.Body.Close()
 
 		var fileUploadRequest api.ResponseFileUploadRequest
 		if err := json.Unmarshal(body, &fileUploadRequest); err != nil {
-			log.Fatal(err)
-			return
+			return nil, err
 		}
 
-		result, err := api.SavePhoto(117456732, fileUploadRequest.Server, fileUploadRequest.Photo, fileUploadRequest.Hash)
+		result, err := api.SavePhoto(groupID, fileUploadRequest.Server, fileUploadRequest.Photo, fileUploadRequest.Hash)
 		if err != nil {
-			log.Fatalf("[main:api.SavePhoto] error: %s", err)
-			return
+			return nil, err
 		}
-		log.Println(result)
+
+		for _, item := range result.Response {
+			results = append(results, strconv.Itoa(item.OwnerID)+"_"+strconv.Itoa(item.ID)+"_"+item.AccessKey)
+		}
 	}
+
+	return results, nil
 }
